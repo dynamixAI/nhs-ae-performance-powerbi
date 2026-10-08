@@ -1,0 +1,1095 @@
+createOrReplace
+
+	model Model
+		culture: en-US
+		defaultPowerBIDataSourceVersion: powerBI_V3
+		sourceQueryCulture: en-US
+		dataAccessOptions
+			legacyRedirects
+			returnErrorValuesAsNull
+
+		table fact_ae
+			lineageTag: b0ebcb0c-f0d8-440f-b3a7-36c8f51bed20
+
+			measure 'Total Attendances' =
+					
+					SUM ( fact_ae[att_type1] ) + SUM ( fact_ae[att_type2] ) + SUM ( fact_ae[att_other] )
+					    + SUM ( fact_ae[att_booked_type1] ) + SUM ( fact_ae[att_booked_type2] ) + SUM ( fact_ae[att_booked_other] )
+				formatString: #,0
+				lineageTag: 5a845756-5285-463c-95df-e8564825cd17
+
+			measure 'Attendances Over 4 Hours' =
+					
+					SUM ( fact_ae[over4h_type1] ) + SUM ( fact_ae[over4h_type2] ) + SUM ( fact_ae[over4h_other] )
+					    + SUM ( fact_ae[over4h_booked_type1] ) + SUM ( fact_ae[over4h_booked_type2] ) + SUM ( fact_ae[over4h_booked_other] )
+				formatString: #,0
+				lineageTag: d212ce15-f58b-4073-9742-232d2e7f350c
+
+			measure '4hr Performance %' =
+					
+					DIVIDE ( [Total Attendances] - [Attendances Over 4 Hours], [Total Attendances] )
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 226544eb-857c-4ad3-a8fa-0b0da6744ef8
+
+			measure 'Type 1 Attendances' =
+					
+					SUM ( fact_ae[att_type1] ) + SUM ( fact_ae[att_booked_type1] )
+				formatString: #,0
+				lineageTag: 050578b3-37b5-438f-aeb4-ec75ad029eae
+
+			measure 'Type 1 Over 4 Hours' =
+					
+					SUM ( fact_ae[over4h_type1] ) + SUM ( fact_ae[over4h_booked_type1] )
+				formatString: #,0
+				lineageTag: e4203e74-f5dc-4fbf-b978-56475e2aa030
+
+			measure 'Type 1 4hr Performance %' =
+					
+					DIVIDE ( [Type 1 Attendances] - [Type 1 Over 4 Hours], [Type 1 Attendances] )
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: a0ffadf4-5a90-4f92-b409-0349c834da66
+
+			measure '4hr Target %' =
+					
+					VAR SelectedFY = SELECTEDVALUE ( dim_date[nhs_fy] )
+					RETURN
+					    SWITCH (
+					        SelectedFY,
+					        "2023-24", 0.76,
+					        "2024-25", 0.78,
+					        "2025-26", 0.78,
+					        "2026-27", 0.82,
+					        BLANK ()
+					    )
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 373c51f3-8d06-451c-902a-531431060735
+
+			measure 'Variance to Target' =
+					
+					IF (
+					    NOT ISBLANK ( [4hr Target %] ),
+					    [4hr Performance %] - [4hr Target %]
+					)
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 06dc9363-31b1-4357-91a3-113dbcc8e895
+
+			measure 'RAG Status' =
+					
+					VAR Gap = [Variance to Target]
+					RETURN
+					    SWITCH (
+					        TRUE (),
+					        ISBLANK ( Gap ), BLANK (),
+					        Gap >= 0, "Green",
+					        Gap >= -0.05, "Amber",
+					        "Red"
+					    )
+				lineageTag: 825e8575-e934-4ade-a02c-5a8799f0a5a9
+
+			measure '12hr Waits from Decision to Admit' =
+					
+					SUM ( fact_ae[dta_wait_12h_plus] )
+				formatString: #,0
+				lineageTag: b4320f0c-cf0f-4f59-ab57-0bba1a20c0f3
+
+			measure '4-12hr Waits from Decision to Admit' =
+					
+					SUM ( fact_ae[dta_wait_4_12h] )
+				formatString: #,0
+				lineageTag: 345de967-4ed7-4179-b235-62fa7431752f
+
+			measure 'Emergency Admissions via A&E' =
+					
+					SUM ( fact_ae[em_adm_type1] ) + SUM ( fact_ae[em_adm_type2] ) + SUM ( fact_ae[em_adm_other] )
+				formatString: #,0
+				lineageTag: b56ed50a-0a63-4f21-af9d-46f4d787979b
+
+			measure 'Total Emergency Admissions' =
+					
+					[Emergency Admissions via A&E] + SUM ( fact_ae[em_adm_other_routes] )
+				formatString: #,0
+				lineageTag: 1c243288-a8e4-405c-9d6f-bf564c41a965
+
+			measure '4hr Performance % LY' =
+					
+					CALCULATE ( [4hr Performance %], DATEADD ( dim_date[period], -12, MONTH ) )
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 75f71e01-fcc2-4088-b22c-d7c4e629ce9e
+
+			measure '4hr Performance YoY Change' =
+					
+					IF (
+					    NOT ISBLANK ( [4hr Performance %] ) && NOT ISBLANK ( [4hr Performance % LY] ),
+					    [4hr Performance %] - [4hr Performance % LY]
+					)
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 7854195f-5aca-4678-983e-5ba592526d19
+
+			measure 'Total Attendances LY' =
+					
+					CALCULATE ( [Total Attendances], DATEADD ( dim_date[period], -12, MONTH ) )
+				formatString: #,0
+				lineageTag: acf9cb9f-c758-4d45-bb1e-bb822f90e938
+
+			measure 'Attendances YoY %' =
+					
+					DIVIDE ( [Total Attendances] - [Total Attendances LY], [Total Attendances LY] )
+				formatString: 0.0%;-0.0%;0.0%
+				lineageTag: 97a8b024-a282-455f-a67c-48eddaa48d26
+
+			column period
+				dataType: dateTime
+				isHidden
+				formatString: Long Date
+				lineageTag: 8bf5fa16-57ed-4926-bbf6-80e7986f0261
+				summarizeBy: none
+				sourceColumn: period
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+				annotation UnderlyingDateTimeDataType = Date
+
+			column org_code
+				dataType: string
+				isHidden
+				lineageTag: 21f1e325-449d-4696-ac78-1476b92cc17f
+				summarizeBy: none
+				sourceColumn: org_code
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_type1
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 63749024-6db6-42f5-80b0-0bbd83a5d15a
+				summarizeBy: sum
+				sourceColumn: att_type1
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_type2
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 788ab513-a2cc-47ce-8ea0-daa71ee2bcbc
+				summarizeBy: sum
+				sourceColumn: att_type2
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_other
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: c3de96a7-6f3f-4258-8c53-585328f0e693
+				summarizeBy: sum
+				sourceColumn: att_other
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_booked_type1
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 7bc1dc5e-c641-4770-b6fd-326062a117f2
+				summarizeBy: sum
+				sourceColumn: att_booked_type1
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_booked_type2
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 25f46910-4dfe-48fa-8830-85e328847fc0
+				summarizeBy: sum
+				sourceColumn: att_booked_type2
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column att_booked_other
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 136752a1-1e5a-45f8-972e-57ba9e30fec3
+				summarizeBy: sum
+				sourceColumn: att_booked_other
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_type1
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 8d1318b6-633f-4b8c-8bed-0e559810df2c
+				summarizeBy: sum
+				sourceColumn: over4h_type1
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_type2
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 264379c6-6451-4bab-9c26-df4249b578d8
+				summarizeBy: sum
+				sourceColumn: over4h_type2
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_other
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 2093c363-f26a-42cd-8d3d-c08e37d7788a
+				summarizeBy: sum
+				sourceColumn: over4h_other
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_booked_type1
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 34b278b7-9fcd-4c11-aae9-5193ef8d0782
+				summarizeBy: sum
+				sourceColumn: over4h_booked_type1
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_booked_type2
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 6a3d9066-9ff2-4a49-8e45-312467db46a2
+				summarizeBy: sum
+				sourceColumn: over4h_booked_type2
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column over4h_booked_other
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 399c40e0-203b-4ba0-b723-12c44ea7766d
+				summarizeBy: sum
+				sourceColumn: over4h_booked_other
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column dta_wait_4_12h
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: e20b4f65-185b-45cc-979c-51bcf846df98
+				summarizeBy: sum
+				sourceColumn: dta_wait_4_12h
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column dta_wait_12h_plus
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 461fd410-08cc-4d51-870a-e127c4c3a3df
+				summarizeBy: sum
+				sourceColumn: dta_wait_12h_plus
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column em_adm_type1
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: d341be18-8286-403b-bcf3-2d6cd15bdacd
+				summarizeBy: sum
+				sourceColumn: em_adm_type1
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column em_adm_type2
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 2cc0a71e-1c49-40f5-969d-f9a49653c952
+				summarizeBy: sum
+				sourceColumn: em_adm_type2
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column em_adm_other
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 2f791d75-4d06-45fb-84e7-af7fe7023a2f
+				summarizeBy: sum
+				sourceColumn: em_adm_other
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			column em_adm_other_routes
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: b5f74872-674e-410a-922e-832aaf92c10a
+				summarizeBy: sum
+				sourceColumn: em_adm_other_routes
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = Automatic
+
+			partition fact_ae = m
+				mode: import
+				source =
+						let
+						  Source = Excel.Workbook(Web.Contents("REPLACE_WITH_PATH_TO/data/clean/nhs_ae_model.xlsx"), null, true),
+						  #"Navigation 1" = Source{[Item = "fact_ae", Kind = "Table"]}[Data],
+						  #"Changed column type" = Table.TransformColumnTypes(#"Navigation 1", {{"period", type date}, {"org_code", type text}, {"att_type1", Int64.Type}, {"att_type2", Int64.Type}, {"att_other", Int64.Type}, {"att_booked_type1", Int64.Type}, {"att_booked_type2", Int64.Type}, {"att_booked_other", Int64.Type}, {"over4h_type1", Int64.Type}, {"over4h_type2", Int64.Type}, {"over4h_other", Int64.Type}, {"over4h_booked_type1", Int64.Type}, {"over4h_booked_type2", Int64.Type}, {"over4h_booked_other", Int64.Type}, {"dta_wait_4_12h", Int64.Type}, {"dta_wait_12h_plus", Int64.Type}, {"em_adm_type1", Int64.Type}, {"em_adm_type2", Int64.Type}, {"em_adm_other", Int64.Type}, {"em_adm_other_routes", Int64.Type}})
+						in
+						  #"Changed column type"
+
+			annotation PBI_ResultType = Table
+
+		table DateTableTemplate_93c25fb8-7ea1-40f5-bc6f-826798e40a68
+			isHidden
+			isPrivate
+			lineageTag: 2a6434f7-f766-4807-8c3e-1ebecd24cc7d
+
+			column Date
+				dataType: dateTime
+				isHidden
+				formatString: General Date
+				lineageTag: 58add17a-4704-47d5-b9f9-feaad6b38d5e
+				dataCategory: PaddedDateTableDates
+				summarizeBy: none
+				isNameInferred
+				sourceColumn: [Date]
+
+				annotation SummarizationSetBy = User
+
+			column Year = YEAR([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 796ef58c-7309-44be-a84b-f50231070ae3
+				dataCategory: Years
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Year
+
+			column MonthNo = MONTH([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 06392be1-8529-4c35-98c5-5599db659132
+				dataCategory: MonthOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = MonthNumber
+
+			column Month = FORMAT([Date], "MMMM")
+				dataType: string
+				isHidden
+				lineageTag: 1b721142-70c6-497f-a663-18c7244603dd
+				dataCategory: Months
+				summarizeBy: none
+				sortByColumn: MonthNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Month
+
+			column QuarterNo = INT(([MonthNo] + 2) / 3)
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: d34e0678-406d-4141-908c-3b2609d92891
+				dataCategory: QuarterOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = QuarterNumber
+
+			column Quarter = "Qtr " & [QuarterNo]
+				dataType: string
+				isHidden
+				lineageTag: 6dc9a40d-b776-4a44-8ef9-c631c9a69bf3
+				dataCategory: Quarters
+				summarizeBy: none
+				sortByColumn: QuarterNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Quarter
+
+			column Day = DAY([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 6ff72b5d-52ab-4c96-9ae5-4ff408b3d5ff
+				dataCategory: DayOfMonth
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Day
+
+			hierarchy 'Date Hierarchy'
+				lineageTag: f9d8ccab-7822-4a9d-9597-f2e0edea9ddf
+
+				level Year
+					lineageTag: 36790978-de0d-4007-a297-fdc7172323a7
+					column: Year
+
+				level Quarter
+					lineageTag: c6961f16-6b88-452b-a66c-f294211bcdd7
+					column: Quarter
+
+				level Month
+					lineageTag: 6c7d6756-2665-41ff-9c14-fec9247b123d
+					column: Month
+
+				level Day
+					lineageTag: 0ab4b604-d78a-4142-b141-40cfe704df10
+					column: Day
+
+				annotation TemplateId = DateHierarchy
+
+			partition DateTableTemplate_93c25fb8-7ea1-40f5-bc6f-826798e40a68 = calculated
+				mode: import
+				source = Calendar(Date(2015,1,1), Date(2015,1,1))
+
+			annotation __PBI_TemplateDateTable = true
+
+			annotation DefaultItem = DateHierarchy
+
+		table dim_org
+			lineageTag: 8513d062-3760-4873-9c77-04a5b2eadb43
+
+			column org_code
+				dataType: string
+				lineageTag: 633550ec-d2dc-4c05-81ea-234ab235692a
+				summarizeBy: none
+				sourceColumn: org_code
+
+				annotation SummarizationSetBy = Automatic
+
+			column org_name
+				dataType: string
+				lineageTag: afc850ee-300e-4bf6-b886-ac425761e530
+				summarizeBy: none
+				sourceColumn: org_name
+
+				annotation SummarizationSetBy = Automatic
+
+			column region
+				dataType: string
+				lineageTag: 529a7d05-5081-4c68-bfbc-558a8831ed88
+				summarizeBy: none
+				sourceColumn: region
+
+				annotation SummarizationSetBy = Automatic
+
+			column first_period
+				dataType: dateTime
+				formatString: Long Date
+				lineageTag: 12f73c09-a591-4c84-8357-91981be6e54a
+				summarizeBy: none
+				sourceColumn: first_period
+
+				variation Variation
+					isDefault
+					relationship: c45c396b-473f-4a0a-a5ee-029f940420a1
+					defaultHierarchy: LocalDateTable_634e1571-a096-4899-92e8-206db66693ec.'Date Hierarchy'
+
+				annotation SummarizationSetBy = Automatic
+
+				annotation UnderlyingDateTimeDataType = Date
+
+			column last_period
+				dataType: dateTime
+				formatString: Long Date
+				lineageTag: d2b83708-312d-4047-8c9e-f303d3ed5c13
+				summarizeBy: none
+				sourceColumn: last_period
+
+				variation Variation
+					isDefault
+					relationship: 26771fef-b626-4c12-b064-5a924b52924c
+					defaultHierarchy: LocalDateTable_821d194e-2e8b-4f89-addc-d78424e952ec.'Date Hierarchy'
+
+				annotation SummarizationSetBy = Automatic
+
+				annotation UnderlyingDateTimeDataType = Date
+
+			column region_short
+				dataType: string
+				lineageTag: d70b06b9-5e9b-46af-9a30-5fa24db19f02
+				summarizeBy: none
+				sourceColumn: region_short
+
+				annotation SummarizationSetBy = Automatic
+
+			partition dim_org = m
+				mode: import
+				source =
+						let
+						  Source = Excel.Workbook(Web.Contents("REPLACE_WITH_PATH_TO/data/clean/nhs_ae_model.xlsx"), null, true),
+						  #"Navigation 1" = Source{[Item = "dim_org", Kind = "Table"]}[Data],
+						  #"Changed column type" = Table.TransformColumnTypes(#"Navigation 1", {{"org_code", type text}, {"org_name", type text}, {"region", type text}, {"first_period", type date}, {"last_period", type date}, {"region_short", type text}})
+						in
+						  #"Changed column type"
+
+			annotation PBI_ResultType = Table
+
+		table LocalDateTable_634e1571-a096-4899-92e8-206db66693ec
+			isHidden
+			showAsVariationsOnly
+			lineageTag: a908260d-bfd6-442e-89bf-e78226feeb16
+
+			column Date
+				dataType: dateTime
+				isHidden
+				formatString: General Date
+				lineageTag: d3840431-7a29-41c1-9a97-57ea232e7b10
+				dataCategory: PaddedDateTableDates
+				summarizeBy: none
+				isNameInferred
+				sourceColumn: [Date]
+
+				annotation SummarizationSetBy = User
+
+			column Year = YEAR([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 8628d72c-96c5-41e9-9a77-22d50bbfdafd
+				dataCategory: Years
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Year
+
+			column MonthNo = MONTH([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 1b211bf6-f7d6-41da-a301-f7b7d91f4339
+				dataCategory: MonthOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = MonthNumber
+
+			column Month = FORMAT([Date], "MMMM")
+				dataType: string
+				isHidden
+				lineageTag: 6caaa636-997c-48b2-a6ec-06b300bedc31
+				dataCategory: Months
+				summarizeBy: none
+				sortByColumn: MonthNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Month
+
+			column QuarterNo = INT(([MonthNo] + 2) / 3)
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 60e0da2d-f409-45f7-b7c9-0ce7df587ef5
+				dataCategory: QuarterOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = QuarterNumber
+
+			column Quarter = "Qtr " & [QuarterNo]
+				dataType: string
+				isHidden
+				lineageTag: 819e1096-24a9-418b-b17f-6e2d733f93e1
+				dataCategory: Quarters
+				summarizeBy: none
+				sortByColumn: QuarterNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Quarter
+
+			column Day = DAY([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 17715de9-0180-4ac2-a362-41d3c06716b4
+				dataCategory: DayOfMonth
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Day
+
+			hierarchy 'Date Hierarchy'
+				lineageTag: 57ad1816-4fcf-4b28-a31b-ca8feb777565
+
+				level Year
+					lineageTag: dc19b37c-ab4c-4622-a61a-454fb23b60c1
+					column: Year
+
+				level Quarter
+					lineageTag: e6fb86f6-c4c1-432a-afb7-c1b512d3b3d1
+					column: Quarter
+
+				level Month
+					lineageTag: 13bad337-e6be-4a33-8aa6-1820a2774d0a
+					column: Month
+
+				level Day
+					lineageTag: 146a9c10-3250-4e15-8bca-285d604600fd
+					column: Day
+
+				annotation TemplateId = DateHierarchy
+
+			partition LocalDateTable_634e1571-a096-4899-92e8-206db66693ec = calculated
+				mode: import
+				source = Calendar(Date(Year(MIN('dim_org'[first_period])), 1, 1), Date(Year(MAX('dim_org'[first_period])), 12, 31))
+
+			annotation __PBI_LocalDateTable = true
+
+		table LocalDateTable_821d194e-2e8b-4f89-addc-d78424e952ec
+			isHidden
+			showAsVariationsOnly
+			lineageTag: 645d2cfc-ceae-446d-9f30-110f1652dad3
+
+			column Date
+				dataType: dateTime
+				isHidden
+				formatString: General Date
+				lineageTag: b0410fc4-0a70-4c47-9cac-b5b8be09e985
+				dataCategory: PaddedDateTableDates
+				summarizeBy: none
+				isNameInferred
+				sourceColumn: [Date]
+
+				annotation SummarizationSetBy = User
+
+			column Year = YEAR([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: d6f3255b-3877-4720-913e-25c173606ba7
+				dataCategory: Years
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Year
+
+			column MonthNo = MONTH([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: ccb9fa2c-1be8-45ed-9f14-2d903a716135
+				dataCategory: MonthOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = MonthNumber
+
+			column Month = FORMAT([Date], "MMMM")
+				dataType: string
+				isHidden
+				lineageTag: 9e3da152-6a8f-414c-ba9f-62a9cb6145eb
+				dataCategory: Months
+				summarizeBy: none
+				sortByColumn: MonthNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Month
+
+			column QuarterNo = INT(([MonthNo] + 2) / 3)
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: f2b08cb1-ca3e-4965-81b5-c7c132bc346d
+				dataCategory: QuarterOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = QuarterNumber
+
+			column Quarter = "Qtr " & [QuarterNo]
+				dataType: string
+				isHidden
+				lineageTag: cb782d41-d0f7-42ac-926a-176c33b47971
+				dataCategory: Quarters
+				summarizeBy: none
+				sortByColumn: QuarterNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Quarter
+
+			column Day = DAY([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 0c43e79f-a955-4110-9d48-98672649c7bb
+				dataCategory: DayOfMonth
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Day
+
+			hierarchy 'Date Hierarchy'
+				lineageTag: 5dcec7cd-44b2-4c55-9c58-08ff19740e41
+
+				level Year
+					lineageTag: b68467e9-264a-4c0a-8092-441a3a666d96
+					column: Year
+
+				level Quarter
+					lineageTag: a7d7019f-77f1-4441-a230-254026a888d0
+					column: Quarter
+
+				level Month
+					lineageTag: bcb33eef-18f5-489b-9f7a-94cd78e35160
+					column: Month
+
+				level Day
+					lineageTag: 8b8db540-8b0e-4916-acac-81df78802270
+					column: Day
+
+				annotation TemplateId = DateHierarchy
+
+			partition LocalDateTable_821d194e-2e8b-4f89-addc-d78424e952ec = calculated
+				mode: import
+				source = Calendar(Date(Year(MIN('dim_org'[last_period])), 1, 1), Date(Year(MAX('dim_org'[last_period])), 12, 31))
+
+			annotation __PBI_LocalDateTable = true
+
+		table dim_date
+			lineageTag: 4894f860-ea64-47b4-b826-d0c12e6f511d
+
+			column period
+				dataType: dateTime
+				formatString: Long Date
+				lineageTag: 8369f74a-f183-45f4-925b-0d56994136e1
+				summarizeBy: none
+				sourceColumn: period
+
+				variation Variation
+					isDefault
+					relationship: f0385323-29d6-4775-b583-67bcda1f8412
+					defaultHierarchy: LocalDateTable_f64bf278-2197-4273-877f-85e94869c5d5.'Date Hierarchy'
+
+				annotation SummarizationSetBy = Automatic
+
+				annotation UnderlyingDateTimeDataType = Date
+
+			column year
+				dataType: int64
+				formatString: 0
+				lineageTag: 3cb9297f-5974-4f5c-a7fb-f4e5964787b3
+				summarizeBy: none
+				sourceColumn: year
+
+				annotation SummarizationSetBy = User
+
+			column month_num
+				dataType: int64
+				formatString: 0
+				lineageTag: 44a37421-c7d5-46ec-baa5-8c4697e03c75
+				summarizeBy: none
+				sourceColumn: month_num
+
+				annotation SummarizationSetBy = User
+
+			column month_name
+				dataType: string
+				lineageTag: f725168d-927d-4d5c-a6ee-b1412cf223ac
+				summarizeBy: none
+				sourceColumn: month_name
+				sortByColumn: month_num
+
+				changedProperty = SortByColumn
+
+				annotation SummarizationSetBy = Automatic
+
+			column month_short
+				dataType: string
+				lineageTag: 5b5401ed-4fd3-479d-b83e-ea812e8e339c
+				summarizeBy: none
+				sourceColumn: month_short
+				sortByColumn: month_num
+
+				changedProperty = SortByColumn
+
+				annotation SummarizationSetBy = Automatic
+
+			column month_label
+				dataType: string
+				lineageTag: 1f996eb4-cf91-4ee6-9d34-8c12d2ede6e9
+				summarizeBy: none
+				sourceColumn: month_label
+				sortByColumn: year_month_sort
+
+				changedProperty = SortByColumn
+
+				annotation SummarizationSetBy = Automatic
+
+			column year_month_sort
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 66ec6ad8-eaeb-4723-9968-2c5c3dc2a45b
+				summarizeBy: none
+				sourceColumn: year_month_sort
+
+				changedProperty = IsHidden
+
+				annotation SummarizationSetBy = User
+
+			column quarter
+				dataType: string
+				lineageTag: 4a961fc3-624d-45f5-af31-f4915c4b4569
+				summarizeBy: none
+				sourceColumn: quarter
+
+				annotation SummarizationSetBy = Automatic
+
+			column nhs_fy
+				dataType: string
+				lineageTag: 0b4f3014-0898-49db-877f-5f9473c3d26d
+				summarizeBy: none
+				sourceColumn: nhs_fy
+
+				annotation SummarizationSetBy = Automatic
+
+			column nhs_fy_month
+				dataType: int64
+				formatString: 0
+				lineageTag: a43e56b5-e990-458f-964f-a0efd1b7e756
+				summarizeBy: none
+				sourceColumn: nhs_fy_month
+
+				annotation SummarizationSetBy = User
+
+			column season
+				dataType: string
+				lineageTag: 0bab30f4-c6ac-4a22-a6bf-b86b7a6fefe2
+				summarizeBy: none
+				sourceColumn: season
+
+				annotation SummarizationSetBy = Automatic
+
+			partition dim_date = m
+				mode: import
+				source =
+						let
+						  Source = Excel.Workbook(Web.Contents("REPLACE_WITH_PATH_TO/data/clean/nhs_ae_model.xlsx"), null, true),
+						  #"Navigation 1" = Source{[Item = "dim_date", Kind = "Table"]}[Data],
+						  #"Changed column type" = Table.TransformColumnTypes(#"Navigation 1", {{"period", type date}, {"year", Int64.Type}, {"month_num", Int64.Type}, {"month_name", type text}, {"month_short", type text}, {"month_label", type text}, {"year_month_sort", Int64.Type}, {"quarter", type text}, {"nhs_fy", type text}, {"nhs_fy_month", Int64.Type}, {"season", type text}})
+						in
+						  #"Changed column type"
+
+			annotation PBI_ResultType = Table
+
+		table LocalDateTable_f64bf278-2197-4273-877f-85e94869c5d5
+			isHidden
+			showAsVariationsOnly
+			lineageTag: cbc222ee-112a-42ed-9470-114c07e17beb
+
+			column Date
+				dataType: dateTime
+				isHidden
+				formatString: General Date
+				lineageTag: 59ec7b58-5045-4334-b589-a5fb6bba3874
+				dataCategory: PaddedDateTableDates
+				summarizeBy: none
+				isNameInferred
+				sourceColumn: [Date]
+
+				annotation SummarizationSetBy = User
+
+			column Year = YEAR([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 9862237c-e148-47d6-97a2-583f7d608290
+				dataCategory: Years
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Year
+
+			column MonthNo = MONTH([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: c8f33592-7ca9-4d26-9773-b4eb739a50db
+				dataCategory: MonthOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = MonthNumber
+
+			column Month = FORMAT([Date], "MMMM")
+				dataType: string
+				isHidden
+				lineageTag: 6791a423-b359-4813-b5c6-ee5937cc4a11
+				dataCategory: Months
+				summarizeBy: none
+				sortByColumn: MonthNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Month
+
+			column QuarterNo = INT(([MonthNo] + 2) / 3)
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: ce0bea6b-d8fc-45de-8f26-d49a9d2965bb
+				dataCategory: QuarterOfYear
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = QuarterNumber
+
+			column Quarter = "Qtr " & [QuarterNo]
+				dataType: string
+				isHidden
+				lineageTag: d4acc380-43bc-4f67-a5da-6f823d1835b1
+				dataCategory: Quarters
+				summarizeBy: none
+				sortByColumn: QuarterNo
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Quarter
+
+			column Day = DAY([Date])
+				dataType: int64
+				isHidden
+				formatString: 0
+				lineageTag: 1a88258b-b92d-4036-bc49-d8bb5b054287
+				dataCategory: DayOfMonth
+				summarizeBy: none
+
+				annotation SummarizationSetBy = User
+
+				annotation TemplateId = Day
+
+			hierarchy 'Date Hierarchy'
+				lineageTag: fc170b9a-2b33-4d76-a15e-f3a421df9987
+
+				level Year
+					lineageTag: da4c6c22-3ea4-4b5c-986c-6e96d178b871
+					column: Year
+
+				level Quarter
+					lineageTag: 9af31543-a00e-44aa-b4a1-c4604d025ada
+					column: Quarter
+
+				level Month
+					lineageTag: 675256f4-7969-4249-acf5-fb6acd8b0ecc
+					column: Month
+
+				level Day
+					lineageTag: c49aba59-35bf-4735-a433-4b32d4696870
+					column: Day
+
+				annotation TemplateId = DateHierarchy
+
+			partition LocalDateTable_f64bf278-2197-4273-877f-85e94869c5d5 = calculated
+				mode: import
+				source = Calendar(Date(Year(MIN('dim_date'[period])), 1, 1), Date(Year(MAX('dim_date'[period])), 12, 31))
+
+			annotation __PBI_LocalDateTable = true
+
+		relationship c45c396b-473f-4a0a-a5ee-029f940420a1
+			joinOnDateBehavior: datePartOnly
+			fromColumn: dim_org.first_period
+			toColumn: LocalDateTable_634e1571-a096-4899-92e8-206db66693ec.Date
+
+		relationship 26771fef-b626-4c12-b064-5a924b52924c
+			joinOnDateBehavior: datePartOnly
+			fromColumn: dim_org.last_period
+			toColumn: LocalDateTable_821d194e-2e8b-4f89-addc-d78424e952ec.Date
+
+		relationship f0385323-29d6-4775-b583-67bcda1f8412
+			joinOnDateBehavior: datePartOnly
+			fromColumn: dim_date.period
+			toColumn: LocalDateTable_f64bf278-2197-4273-877f-85e94869c5d5.Date
+
+		relationship c2f8783c-e0a6-b2b4-20cd-9f85b741a517
+			fromColumn: fact_ae.org_code
+			toColumn: dim_org.org_code
+
+		relationship b1bf7302-1a6b-f691-a448-4903a8749fdd
+			fromColumn: fact_ae.period
+			toColumn: dim_date.period
+
+		annotation __PBI_TimeIntelligenceEnabled = 1
+
+		annotation PBI_QueryOrder = ["fact_ae","dim_org","dim_date"]
+
+		annotation __LastRPTime = 134359593777512353
+
+		annotation PBI_ProTooling = ["WebModelingEdit","DaxQueryView_Desktop","TMDLView_Desktop"]
+

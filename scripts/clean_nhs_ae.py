@@ -15,6 +15,7 @@ Usage: python3 scripts/clean_nhs_ae.py
 
 import re
 import sys
+import zipfile
 from pathlib import Path
 
 import pandas as pd
@@ -211,6 +212,23 @@ def build_tables(df):
     return fact, dim_org, dim_date
 
 
+def fix_core_properties(xlsx_path):
+    """Work around an openpyxl 3.1.2 bug that writes metadata dates like '2026-10-08T12:18:55+00:00Z'.
+    Two time-zone markers is invalid, and Power BI rejects the file. Rewrite them as '...Z'.
+    Harmless if the bug isn't present (nothing to replace)."""
+    tmp_path = xlsx_path.with_suffix(".tmp")
+    fixed = False
+    with zipfile.ZipFile(xlsx_path) as src, zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename == "docProps/core.xml" and b"+00:00Z" in data:
+                data = data.replace(b"+00:00Z", b"Z")
+                fixed = True
+            dst.writestr(item, data)
+    tmp_path.replace(xlsx_path)
+    return fixed
+
+
 def write_outputs(tables):
     """Save one Excel workbook (each sheet formatted as an Excel table) plus a CSV per table."""
     CLEAN_DIR.mkdir(parents=True, exist_ok=True)
@@ -224,6 +242,9 @@ def write_outputs(tables):
             table = Table(displayName=name, ref=ref)
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             ws.add_table(table)
+
+    if fix_core_properties(xlsx_path):
+        print("Fixed invalid metadata dates in the workbook (openpyxl bug) so Power BI can read it")
 
     for name, df in tables.items():
         df.to_csv(CLEAN_DIR / f"{name}.csv", index=False)
